@@ -1,0 +1,19 @@
+[project]
+name = "nolix-trapx-growth-api"
+version = "0.1.0"
+description = "Read-only data API for the Nolix & TrapX Growth Agent"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1.0",
+  "httpx>=0.27,<1.0",
+  "pydantic-settings>=2.6,<3.0",
+  "uvicorn[standard]>=0.30,<1.0",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

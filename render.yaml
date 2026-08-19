@@ -1,0 +1,20 @@
+services:
+  - type: web
+    runtime: python
+    name: nolix-trapx-growth-api
+    buildCommand: pip install .
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: GROWTH_API_KEY
+        sync: false
+      - key: NOLIX_SHOPIFY_STORE_DOMAIN
+        sync: false
+      - key: NOLIX_SHOPIFY_ACCESS_TOKEN
+        sync: false
+      - key: TRAPX_SHOPIFY_STORE_DOMAIN
+        sync: false
+      - key: TRAPX_SHOPIFY_ACCESS_TOKEN
+        sync: false
