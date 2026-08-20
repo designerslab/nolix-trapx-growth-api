@@ -64,8 +64,15 @@ class GSCClient:
                 self.credentials.refresh(Request())
 
         except Exception as error:
+            print(
+                "GOOGLE AUTH ERROR:",
+                type(error).__name__,
+                str(error),
+            )
+
             raise GSCUpstreamError(
-                "Unable to authenticate to Google Search Console."
+                f"Unable to authenticate to Google Search Console: "
+                f"{type(error).__name__}: {error}"
             ) from error
 
         if not self.credentials.token:
@@ -85,13 +92,11 @@ class GSCClient:
         country: str | None = None,
         device: str | None = None,
     ) -> GSCPerformanceResponse:
-
         if end_date < start_date:
             raise ValueError(
                 "end_date must be on or after start_date"
             )
 
-        dimension_filter_groups = []
         filters = []
 
         if country:
@@ -112,14 +117,6 @@ class GSCClient:
                 }
             )
 
-        if filters:
-            dimension_filter_groups.append(
-                {
-                    "groupType": "and",
-                    "filters": filters,
-                }
-            )
-
         body: dict[str, object] = {
             "startDate": start_date.isoformat(),
             "endDate": end_date.isoformat(),
@@ -129,8 +126,13 @@ class GSCClient:
             "dataState": "final",
         }
 
-        if dimension_filter_groups:
-            body["dimensionFilterGroups"] = dimension_filter_groups
+        if filters:
+            body["dimensionFilterGroups"] = [
+                {
+                    "groupType": "and",
+                    "filters": filters,
+                }
+            ]
 
         encoded_site = quote(self.site_url, safe="")
 
@@ -154,17 +156,22 @@ class GSCClient:
                 response.raise_for_status()
 
         except httpx.HTTPStatusError as error:
-            detail = error.response.text[:500]
+            detail = error.response.text[:1000]
+
+            print(
+                "GSC upstream error:",
+                error.response.status_code,
+                detail,
+            )
 
             raise GSCUpstreamError(
                 f"GSC query failed with "
                 f"{error.response.status_code}: {detail}"
             ) from error
 
-        except Exception as error:
+        except httpx.HTTPError as error:
             raise GSCUpstreamError(
-                f"Unable to authenticate to Google Search Console: "
-                f"{type(error).__name__}: {error}"
+                "Unable to read Google Search Console data."
             ) from error
 
         payload = response.json()
