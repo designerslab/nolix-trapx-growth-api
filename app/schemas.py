@@ -67,3 +67,62 @@ class GSCOpportunitiesResponse(BaseModel):
     opportunities: list[GSCOpportunity] = Field(
         default_factory=list
     )
+class GSCMetricSnapshot(BaseModel):
+    clicks: float = 0
+    impressions: float = 0
+    ctr: float = 0
+    position: float = 0
+
+
+class GSCMetricChange(BaseModel):
+    clicks: float = 0
+    impressions: float = 0
+    ctr: float = 0
+    position: float = 0
+
+
+class GSCComparisonRow(BaseModel):
+    query: str
+    current: GSCMetricSnapshot
+    previous: GSCMetricSnapshot
+    changes: GSCMetricChange
+    trend: str
+
+
+class GSCCompareResponse(BaseModel):
+    brand: str
+    site_url: str
+
+    current_start_date: date
+    current_end_date: date
+
+    previous_start_date: date
+    previous_end_date: date
+
+    rows: list[GSCComparisonRow] = Field(
+        default_factory=list
+    )
+class GSCActionRow(BaseModel):
+    query: str
+    action: str
+    priority_score: float
+    recommendation: str
+
+    current: GSCMetricSnapshot
+    previous: GSCMetricSnapshot
+    changes: GSCMetricChange
+
+
+class GSCActionsResponse(BaseModel):
+    brand: str
+    site_url: str
+
+    current_start_date: date
+    current_end_date: date
+
+    previous_start_date: date
+    previous_end_date: date
+
+    actions: list[GSCActionRow] = Field(
+        default_factory=list
+    )
