@@ -161,9 +161,10 @@ class GSCClient:
                 f"{error.response.status_code}: {detail}"
             ) from error
 
-        except httpx.HTTPError as error:
+        except Exception as error:
             raise GSCUpstreamError(
-                "Unable to read Google Search Console data."
+                f"Unable to authenticate to Google Search Console: "
+                f"{type(error).__name__}: {error}"
             ) from error
 
         payload = response.json()
