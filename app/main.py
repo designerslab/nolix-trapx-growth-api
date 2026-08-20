@@ -186,11 +186,11 @@ async def _gsc_query(
         ) from error
 
     except GSCUpstreamError as error:
+        print(f"GSC ERROR: {error}")
+
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=(
-                "Google Search Console query failed."
-            ),
+            detail=str(error),
         ) from error
 
 
