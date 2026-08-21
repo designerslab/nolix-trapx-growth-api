@@ -126,3 +126,53 @@ class GSCActionsResponse(BaseModel):
     actions: list[GSCActionRow] = Field(
         default_factory=list
     )
+class GA4OverviewResponse(BaseModel):
+    brand: str
+    property_id: str
+    start_date: date
+    end_date: date
+
+    active_users: int
+    sessions: int
+    engaged_sessions: int
+    engagement_rate: float
+    screen_page_views: int
+
+
+class GA4LandingPageRow(BaseModel):
+    landing_page: str
+    sessions: int
+    active_users: int
+    engaged_sessions: int
+    engagement_rate: float
+    screen_page_views: int
+
+
+class GA4LandingPagesResponse(BaseModel):
+    brand: str
+    property_id: str
+    start_date: date
+    end_date: date
+
+    rows: list[GA4LandingPageRow] = Field(
+        default_factory=list
+    )
+
+
+class GA4ChannelRow(BaseModel):
+    channel: str
+    sessions: int
+    active_users: int
+    engaged_sessions: int
+    engagement_rate: float
+
+
+class GA4ChannelsResponse(BaseModel):
+    brand: str
+    property_id: str
+    start_date: date
+    end_date: date
+
+    rows: list[GA4ChannelRow] = Field(
+        default_factory=list
+    )    

@@ -19,7 +19,8 @@ class Settings(BaseSettings):
 
     trapx_shopify_store_domain: str | None = None
     trapx_shopify_access_token: SecretStr | None = None
-
+    nolix_ga4_property_id: str | None = None
+    trapx_ga4_property_id: str | None = None
     google_service_account_json: SecretStr | None = None
 
     nolix_gsc_site_url: str | None = None
@@ -39,6 +40,14 @@ class Settings(BaseSettings):
             "trapx": (self.trapx_shopify_store_domain, self.trapx_shopify_access_token),
         }
         return credentials[brand]
+    def ga4_property_id(self, brand: str) -> str | None:
+        if brand == "nolix":
+            return self.nolix_ga4_property_id
+
+        if brand == "trapx":
+            return self.trapx_ga4_property_id
+
+        return None
 
 
 @lru_cache

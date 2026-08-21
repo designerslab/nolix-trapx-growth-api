@@ -22,12 +22,22 @@ from app.schemas import (
     GSCPerformanceResponse,
     HealthResponse,
     ShopifyProductsResponse,
+    GA4ChannelRow,
+    GA4ChannelsResponse,
+    GA4LandingPageRow,
+    GA4LandingPagesResponse,
+    GA4OverviewResponse,
 )
 from app.security import require_api_key
 from app.services.gsc import (
     GSCClient,
     GSCNotConfiguredError,
     GSCUpstreamError,
+)
+from app.services.ga4 import (
+    GA4Client,
+    GA4NotConfiguredError,
+    GA4UpstreamError,
 )
 from app.services.shopify import (
     ShopifyClient,
@@ -43,6 +53,11 @@ app = FastAPI(
         "Read-only source data for the "
         "Nolix & TrapX Growth Agent."
     ),
+    servers=[
+        {
+            "url": "https://nolix-trapx-growth-api.onrender.com"
+        }
+    ],
 )
 
 
@@ -216,6 +231,14 @@ async def health() -> HealthResponse:
         )
     )
 
+    ga4_configured = bool(
+        settings.google_service_account_json
+        and any(
+            settings.ga4_property_id(brand)
+            for brand in ("nolix", "trapx")
+        )
+    )
+
     shopify_configured = any(
         settings.shopify_credentials(brand)[0]
         for brand in ("nolix", "trapx")
@@ -233,10 +256,13 @@ async def health() -> HealthResponse:
                 if gsc_configured
                 else "pending"
             ),
-            "ga4": "planned",
+            "ga4": (
+                "configured"
+                if ga4_configured
+                else "pending"
+            ),
         }
     )
-
 
 @app.get(
     "/v1/brands/{brand}/shopify/products",
@@ -1228,4 +1254,319 @@ async def list_gsc_actions(
         previous_start_date=previous_start_date,
         previous_end_date=previous_end_date,
         actions=actions,
+    )
+def _ga4_value(
+    value: str,
+    value_type=float,
+):
+    try:
+        return value_type(value)
+    except (TypeError, ValueError):
+        return value_type(0)
+
+
+def _ga4_client(
+    brand: str,
+) -> GA4Client:
+    try:
+        return GA4Client(
+            get_settings(),
+            brand,
+        )
+
+    except GA4NotConfiguredError as error:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_503_SERVICE_UNAVAILABLE
+            ),
+            detail=str(error),
+        ) from error
+
+    except GA4UpstreamError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+
+@app.get(
+    "/v1/brands/{brand}/ga4/overview",
+    response_model=GA4OverviewResponse,
+    dependencies=[Depends(require_api_key)],
+    tags=["ga4"],
+    operation_id="get_ga4_overview",
+)
+async def get_ga4_overview(
+    brand: str = Path(
+        pattern="^(nolix|trapx)$"
+    ),
+    start_date: date = Query(
+        default_factory=default_start_date
+    ),
+    end_date: date = Query(
+        default_factory=date.today
+    ),
+) -> GA4OverviewResponse:
+    _validate_date_range(
+        start_date,
+        end_date,
+    )
+
+    ga4 = _ga4_client(brand)
+
+    try:
+        report = ga4.run_report(
+            start_date=start_date,
+            end_date=end_date,
+            dimensions=[],
+            metrics=[
+                "activeUsers",
+                "sessions",
+                "engagedSessions",
+                "engagementRate",
+                "screenPageViews",
+            ],
+            limit=1,
+        )
+
+    except GA4UpstreamError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    if not report.rows:
+        values = ["0", "0", "0", "0", "0"]
+    else:
+        values = [
+            value.value
+            for value in report.rows[0].metric_values
+        ]
+
+    return GA4OverviewResponse(
+        brand=brand,
+        property_id=ga4.property_id,
+        start_date=start_date,
+        end_date=end_date,
+        active_users=_ga4_value(
+            values[0],
+            int,
+        ),
+        sessions=_ga4_value(
+            values[1],
+            int,
+        ),
+        engaged_sessions=_ga4_value(
+            values[2],
+            int,
+        ),
+        engagement_rate=_ga4_value(
+            values[3],
+            float,
+        ),
+        screen_page_views=_ga4_value(
+            values[4],
+            int,
+        ),
+    )
+
+
+@app.get(
+    "/v1/brands/{brand}/ga4/landing-pages",
+    response_model=GA4LandingPagesResponse,
+    dependencies=[Depends(require_api_key)],
+    tags=["ga4"],
+    operation_id="list_ga4_landing_pages",
+)
+async def list_ga4_landing_pages(
+    brand: str = Path(
+        pattern="^(nolix|trapx)$"
+    ),
+    start_date: date = Query(
+        default_factory=default_start_date
+    ),
+    end_date: date = Query(
+        default_factory=date.today
+    ),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=1000,
+    ),
+) -> GA4LandingPagesResponse:
+    _validate_date_range(
+        start_date,
+        end_date,
+    )
+
+    ga4 = _ga4_client(brand)
+
+    try:
+        report = ga4.run_report(
+            start_date=start_date,
+            end_date=end_date,
+            dimensions=[
+                "landingPagePlusQueryString"
+            ],
+            metrics=[
+                "sessions",
+                "activeUsers",
+                "engagedSessions",
+                "engagementRate",
+                "screenPageViews",
+            ],
+            limit=limit,
+        )
+
+    except GA4UpstreamError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    rows = []
+
+    for row in report.rows:
+        metrics = [
+            value.value
+            for value in row.metric_values
+        ]
+
+        rows.append(
+            GA4LandingPageRow(
+                landing_page=(
+                    row.dimension_values[0].value
+                ),
+                sessions=_ga4_value(
+                    metrics[0],
+                    int,
+                ),
+                active_users=_ga4_value(
+                    metrics[1],
+                    int,
+                ),
+                engaged_sessions=_ga4_value(
+                    metrics[2],
+                    int,
+                ),
+                engagement_rate=_ga4_value(
+                    metrics[3],
+                    float,
+                ),
+                screen_page_views=_ga4_value(
+                    metrics[4],
+                    int,
+                ),
+            )
+        )
+
+    rows.sort(
+        key=lambda item: item.sessions,
+        reverse=True,
+    )
+
+    return GA4LandingPagesResponse(
+        brand=brand,
+        property_id=ga4.property_id,
+        start_date=start_date,
+        end_date=end_date,
+        rows=rows,
+    )
+
+
+@app.get(
+    "/v1/brands/{brand}/ga4/channels",
+    response_model=GA4ChannelsResponse,
+    dependencies=[Depends(require_api_key)],
+    tags=["ga4"],
+    operation_id="list_ga4_channels",
+)
+async def list_ga4_channels(
+    brand: str = Path(
+        pattern="^(nolix|trapx)$"
+    ),
+    start_date: date = Query(
+        default_factory=default_start_date
+    ),
+    end_date: date = Query(
+        default_factory=date.today
+    ),
+    limit: int = Query(
+        default=50,
+        ge=1,
+        le=100,
+    ),
+) -> GA4ChannelsResponse:
+    _validate_date_range(
+        start_date,
+        end_date,
+    )
+
+    ga4 = _ga4_client(brand)
+
+    try:
+        report = ga4.run_report(
+            start_date=start_date,
+            end_date=end_date,
+            dimensions=[
+                "sessionDefaultChannelGroup"
+            ],
+            metrics=[
+                "sessions",
+                "activeUsers",
+                "engagedSessions",
+                "engagementRate",
+            ],
+            limit=limit,
+        )
+
+    except GA4UpstreamError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+
+    rows = []
+
+    for row in report.rows:
+        metrics = [
+            value.value
+            for value in row.metric_values
+        ]
+
+        rows.append(
+            GA4ChannelRow(
+                channel=(
+                    row.dimension_values[0].value
+                ),
+                sessions=_ga4_value(
+                    metrics[0],
+                    int,
+                ),
+                active_users=_ga4_value(
+                    metrics[1],
+                    int,
+                ),
+                engaged_sessions=_ga4_value(
+                    metrics[2],
+                    int,
+                ),
+                engagement_rate=_ga4_value(
+                    metrics[3],
+                    float,
+                ),
+            )
+        )
+
+    rows.sort(
+        key=lambda item: item.sessions,
+        reverse=True,
+    )
+
+    return GA4ChannelsResponse(
+        brand=brand,
+        property_id=ga4.property_id,
+        start_date=start_date,
+        end_date=end_date,
+        rows=rows,
     )
