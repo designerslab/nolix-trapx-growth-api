@@ -1,0 +1,253 @@
+import os
+from datetime import date
+
+import httpx
+from mcp.server import MCPServer
+
+mcp = MCPServer(
+    "Nolix Growth API",
+    instructions=(
+        "Read-only growth data for Nolix and TrapX "
+        "from Google Search Console, GA4, and Shopify."
+    ),
+)
+
+GROWTH_API_PUBLIC_URL = os.getenv(
+    "GROWTH_API_PUBLIC_URL",
+    "https://nolix-trapx-growth-api.onrender.com",
+).rstrip("/")
+
+GROWTH_API_KEY = os.getenv("GROWTH_API_KEY")
+
+
+async def _get(
+    path: str,
+    params: dict | None = None,
+) -> dict:
+    headers = {}
+
+    if GROWTH_API_KEY:
+        headers["X-API-Key"] = GROWTH_API_KEY
+
+    async with httpx.AsyncClient(
+        timeout=60.0,
+        follow_redirects=True,
+    ) as client:
+        response = await client.get(
+            f"{GROWTH_API_PUBLIC_URL}{path}",
+            params=params,
+            headers=headers,
+        )
+
+        response.raise_for_status()
+        return response.json()
+
+
+@mcp.tool()
+async def get_gsc_queries(
+    brand: str,
+    start_date: str,
+    end_date: str,
+    limit: int = 100,
+    start_row: int = 0,
+) -> dict:
+    """Get Google Search Console query performance."""
+
+    return await _get(
+        f"/v1/brands/{brand}/gsc/queries",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit": limit,
+            "start_row": start_row,
+        },
+    )
+
+
+@mcp.tool()
+async def get_gsc_pages(
+    brand: str,
+    start_date: str,
+    end_date: str,
+    limit: int = 100,
+    start_row: int = 0,
+) -> dict:
+    """Get Google Search Console page performance."""
+
+    return await _get(
+        f"/v1/brands/{brand}/gsc/pages",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit": limit,
+            "start_row": start_row,
+        },
+    )
+
+
+@mcp.tool()
+async def get_gsc_query_pages(
+    brand: str,
+    start_date: str,
+    end_date: str,
+    limit: int = 100,
+    start_row: int = 0,
+) -> dict:
+    """Get Google Search Console query-to-page performance."""
+
+    return await _get(
+        f"/v1/brands/{brand}/gsc/query-pages",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit": limit,
+            "start_row": start_row,
+        },
+    )
+
+
+@mcp.tool()
+async def get_gsc_opportunities(
+    brand: str,
+    start_date: str,
+    end_date: str,
+    limit: int = 1000,
+    min_impressions: float = 3,
+) -> dict:
+    """Get filtered SEO opportunities from GSC."""
+
+    return await _get(
+        f"/v1/brands/{brand}/gsc/opportunities",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit": limit,
+            "min_impressions": min_impressions,
+        },
+    )
+
+
+@mcp.tool()
+async def compare_gsc_queries(
+    brand: str,
+    current_start_date: str,
+    current_end_date: str,
+    previous_start_date: str,
+    previous_end_date: str,
+    limit: int = 1000,
+    min_impressions: float = 1,
+) -> dict:
+    """Compare GSC query performance between two periods."""
+
+    return await _get(
+        f"/v1/brands/{brand}/gsc/compare",
+        {
+            "current_start_date": current_start_date,
+            "current_end_date": current_end_date,
+            "previous_start_date": previous_start_date,
+            "previous_end_date": previous_end_date,
+            "limit": limit,
+            "min_impressions": min_impressions,
+        },
+    )
+
+
+@mcp.tool()
+async def get_gsc_actions(
+    brand: str,
+    current_start_date: str,
+    current_end_date: str,
+    previous_start_date: str,
+    previous_end_date: str,
+    limit: int = 1000,
+    min_impressions: float = 1,
+) -> dict:
+    """Get prioritized SEO actions derived from GSC comparison data."""
+
+    return await _get(
+        f"/v1/brands/{brand}/gsc/actions",
+        {
+            "current_start_date": current_start_date,
+            "current_end_date": current_end_date,
+            "previous_start_date": previous_start_date,
+            "previous_end_date": previous_end_date,
+            "limit": limit,
+            "min_impressions": min_impressions,
+        },
+    )
+
+
+@mcp.tool()
+async def get_ga4_overview(
+    brand: str,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Get GA4 traffic and engagement summary."""
+
+    return await _get(
+        f"/v1/brands/{brand}/ga4/overview",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
+
+
+@mcp.tool()
+async def get_ga4_landing_pages(
+    brand: str,
+    start_date: str,
+    end_date: str,
+    limit: int = 100,
+) -> dict:
+    """Get GA4 landing-page engagement metrics."""
+
+    return await _get(
+        f"/v1/brands/{brand}/ga4/landing-pages",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit": limit,
+        },
+    )
+
+
+@mcp.tool()
+async def get_ga4_channels(
+    brand: str,
+    start_date: str,
+    end_date: str,
+    limit: int = 50,
+) -> dict:
+    """Get GA4 acquisition channel performance."""
+
+    return await _get(
+        f"/v1/brands/{brand}/ga4/channels",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "limit": limit,
+        },
+    )
+
+
+@mcp.tool()
+async def get_shopify_products(
+    brand: str,
+    limit: int = 50,
+    page_cursor: str | None = None,
+) -> dict:
+    """Get read-only Shopify product catalog data."""
+
+    params = {
+        "limit": limit,
+    }
+
+    if page_cursor:
+        params["page_cursor"] = page_cursor
+
+    return await _get(
+        f"/v1/brands/{brand}/shopify/products",
+        params,
+    )
