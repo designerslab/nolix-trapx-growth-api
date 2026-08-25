@@ -175,4 +175,65 @@ class GA4ChannelsResponse(BaseModel):
 
     rows: list[GA4ChannelRow] = Field(
         default_factory=list
-    )    
+    )   
+
+class ShopifySelectedOption(BaseModel):
+    name: str
+    value: str
+
+
+class ShopifyProductDetail(BaseModel):
+    id: str
+    numeric_id: str
+    title: str
+    handle: str
+    status: str
+
+    vendor: str | None = None
+    product_type: str | None = None
+    tags: list[str] = Field(default_factory=list)
+
+    description: str | None = None
+    description_html: str | None = None
+
+    online_store_url: str | None = None
+
+    seo_title: str | None = None
+    seo_description: str | None = None
+
+    published_at: str | None = None
+    created_at: str | None = None
+    updated_at: str | None = None
+
+    total_inventory: int | None = None
+
+
+class ShopifyProductDetailResponse(BaseModel):
+    brand: str
+    product: ShopifyProductDetail
+
+
+class ShopifyVariantRow(BaseModel):
+    id: str
+    numeric_id: str
+
+    title: str
+    sku: str | None = None
+    barcode: str | None = None
+
+    price: str | None = None
+    compare_at_price: str | None = None
+
+    inventory_quantity: int | None = None
+
+    selected_options: list[ShopifySelectedOption] = Field(
+        default_factory=list
+    )
+
+
+class ShopifyVariantsResponse(BaseModel):
+    brand: str
+    product_id: str
+    variants: list[ShopifyVariantRow] = Field(
+        default_factory=list
+    )     

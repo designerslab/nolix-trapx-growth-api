@@ -27,6 +27,8 @@ from app.schemas import (
     GA4LandingPageRow,
     GA4LandingPagesResponse,
     GA4OverviewResponse,
+    ShopifyProductDetailResponse,
+    ShopifyVariantsResponse,
 )
 from app.security import require_api_key
 from app.services.gsc import (
@@ -263,7 +265,106 @@ async def health() -> HealthResponse:
             ),
         }
     )
+@app.get(
+    "/v1/brands/{brand}/shopify/products/{product_id}",
+    response_model=ShopifyProductDetailResponse,
+    dependencies=[Depends(require_api_key)],
+    tags=["shopify"],
+    operation_id="get_shopify_product",
+)
+async def get_shopify_product(
+    brand: str = Path(
+        pattern="^(nolix|trapx)$"
+    ),
+    product_id: str = Path(
+        min_length=1
+    ),
+) -> ShopifyProductDetailResponse:
+    try:
+        return await ShopifyClient(
+            get_settings(),
+            brand,
+        ).get_product(
+            product_id
+        )
 
+    except ShopifyNotConfiguredError as error:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_503_SERVICE_UNAVAILABLE
+            ),
+            detail=str(error),
+        ) from error
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=str(error),
+        ) from error
+
+    except ShopifyUpstreamError as error:
+        print(
+            "SHOPIFY PRODUCT ERROR:",
+            error,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
+@app.get(
+    "/v1/brands/{brand}/shopify/products/{product_id}/variants",
+    response_model=ShopifyVariantsResponse,
+    dependencies=[Depends(require_api_key)],
+    tags=["shopify"],
+    operation_id="get_shopify_product_variants",
+)
+async def get_shopify_product_variants(
+    brand: str = Path(
+        pattern="^(nolix|trapx)$"
+    ),
+    product_id: str = Path(
+        min_length=1
+    ),
+    limit: int = Query(
+        default=100,
+        ge=1,
+        le=250,
+    ),
+) -> ShopifyVariantsResponse:
+    try:
+        return await ShopifyClient(
+            get_settings(),
+            brand,
+        ).get_product_variants(
+            product_id=product_id,
+            limit=limit,
+        )
+
+    except ShopifyNotConfiguredError as error:
+        raise HTTPException(
+            status_code=(
+                status.HTTP_503_SERVICE_UNAVAILABLE
+            ),
+            detail=str(error),
+        ) from error
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=422,
+            detail=str(error),
+        ) from error
+
+    except ShopifyUpstreamError as error:
+        print(
+            "SHOPIFY VARIANTS ERROR:",
+            error,
+        )
+
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error
 @app.get(
     "/v1/brands/{brand}/shopify/products",
     response_model=ShopifyProductsResponse,

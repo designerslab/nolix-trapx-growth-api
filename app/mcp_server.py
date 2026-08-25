@@ -241,7 +241,60 @@ async def get_ga4_channels(
         },
     )
 
+@mcp.tool(annotations=READ_ONLY)
+async def get_shopify_product(
+    brand: str,
+    product_id: str,
+) -> dict:
+    """
+    Get detailed read-only Shopify product data.
 
+    product_id should be the numeric Shopify product ID.
+    """
+
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError(
+            "brand must be either 'nolix' or 'trapx'"
+        )
+
+    return await _get(
+        (
+            f"/v1/brands/{brand}"
+            f"/shopify/products/{product_id}"
+        )
+    )
+@mcp.tool(annotations=READ_ONLY)
+async def get_shopify_product_variants(
+    brand: str,
+    product_id: str,
+    limit: int = 100,
+) -> dict:
+    """
+    Get variants, SKU, price and inventory
+    for a Shopify product.
+
+    product_id should be the numeric Shopify product ID.
+    """
+
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError(
+            "brand must be either 'nolix' or 'trapx'"
+        )
+
+    return await _get(
+        (
+            f"/v1/brands/{brand}"
+            f"/shopify/products/"
+            f"{product_id}/variants"
+        ),
+        {
+            "limit": limit,
+        },
+    )
 @mcp.tool(annotations=READ_ONLY)
 async def get_shopify_products(
     brand: str,
