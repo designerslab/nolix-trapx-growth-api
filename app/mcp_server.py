@@ -3,7 +3,11 @@ from datetime import date
 
 import httpx
 from mcp.server import MCPServer
-
+from mcp.types import ToolAnnotations
+READ_ONLY = ToolAnnotations(
+    read_only_hint=True,
+    open_world_hint=False,
+)
 mcp = MCPServer(
     "Nolix Growth API",
     instructions=(
@@ -43,7 +47,7 @@ async def _get(
         return response.json()
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def get_gsc_queries(
     brand: str,
     start_date: str,
@@ -64,7 +68,7 @@ async def get_gsc_queries(
     )
 
 
-@mcp.tool()
+@mcp.tool( annotations=READ_ONLY)
 async def get_gsc_pages(
     brand: str,
     start_date: str,
@@ -85,7 +89,7 @@ async def get_gsc_pages(
     )
 
 
-@mcp.tool()
+@mcp.tool( annotations=READ_ONLY)
 async def get_gsc_query_pages(
     brand: str,
     start_date: str,
@@ -106,7 +110,7 @@ async def get_gsc_query_pages(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def get_gsc_opportunities(
     brand: str,
     start_date: str,
@@ -127,7 +131,7 @@ async def get_gsc_opportunities(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def compare_gsc_queries(
     brand: str,
     current_start_date: str,
@@ -152,7 +156,7 @@ async def compare_gsc_queries(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def get_gsc_actions(
     brand: str,
     current_start_date: str,
@@ -177,7 +181,7 @@ async def get_gsc_actions(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def get_ga4_overview(
     brand: str,
     start_date: str,
@@ -194,7 +198,7 @@ async def get_ga4_overview(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def get_ga4_landing_pages(
     brand: str,
     start_date: str,
@@ -213,8 +217,8 @@ async def get_ga4_landing_pages(
     )
 
 
-@mcp.tool()
-async def get_ga4_channels(
+@mcp.tool(  annotations=READ_ONLY)
+async def get_ga4_channels( 
     brand: str,
     start_date: str,
     end_date: str,
@@ -232,7 +236,7 @@ async def get_ga4_channels(
     )
 
 
-@mcp.tool()
+@mcp.tool(annotations=READ_ONLY)
 async def get_shopify_products(
     brand: str,
     limit: int = 50,
