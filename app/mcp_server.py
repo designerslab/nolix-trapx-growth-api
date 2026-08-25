@@ -43,7 +43,13 @@ async def _get(
             headers=headers,
         )
 
-        response.raise_for_status()
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Growth API returned "
+                f"{response.status_code}: "
+                f"{response.text[:1000]}"
+            )
+
         return response.json()
 
 
@@ -243,6 +249,13 @@ async def get_shopify_products(
     page_cursor: str | None = None,
 ) -> dict:
     """Get read-only Shopify product catalog data."""
+
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError(
+            "brand must be either 'nolix' or 'trapx'"
+        )
 
     params = {
         "limit": limit,

@@ -34,12 +34,29 @@ class Settings(BaseSettings):
             "trapx": self.trapx_gsc_site_url,
         }[brand]
 
-    def shopify_credentials(self, brand: str) -> tuple[str | None, str | None]:
+    def shopify_credentials(
+    self,
+    brand: str,
+    ) -> tuple[str | None, str | None]:
         credentials = {
-            "nolix": (self.nolix_shopify_store_domain, self.nolix_shopify_access_token),
-            "trapx": (self.trapx_shopify_store_domain, self.trapx_shopify_access_token),
+            "nolix": (
+                self.nolix_shopify_store_domain,
+                self.nolix_shopify_access_token,
+            ),
+            "trapx": (
+                self.trapx_shopify_store_domain,
+                self.trapx_shopify_access_token,
+            ),
         }
-        return credentials[brand]
+
+        domain, token = credentials[brand]
+
+        return (
+            domain,
+            token.get_secret_value()
+            if token
+            else None,
+        )
     def ga4_property_id(self, brand: str) -> str | None:
         if brand == "nolix":
             return self.nolix_ga4_property_id

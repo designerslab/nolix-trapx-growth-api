@@ -302,10 +302,12 @@ async def list_shopify_products(
         ) from error
 
     except ShopifyUpstreamError as error:
+        print("SHOPIFY ERROR:", error)
+
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Shopify product query failed.",
-        ) from error
+            detail=str(error),
+        ) from error    
 
 
 def _validate_date_range(

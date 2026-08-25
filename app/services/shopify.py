@@ -5,6 +5,7 @@ import httpx
 
 from app.config import Settings
 from app.schemas import ShopifyProduct, ShopifyProductsResponse
+from pydantic import SecretStr
 
 API_VERSION = "2026-07"
 
@@ -23,6 +24,10 @@ class ShopifyClient:
     def __init__(self, settings: Settings, brand: str) -> None:
         self.brand = brand
         domain, token = settings.shopify_credentials(brand)
+
+
+        self.store_domain = domain
+        self.access_token = token
         if not domain or not token:
             raise ShopifyNotConfiguredError(f"Shopify is not configured for {brand}.")
         self.base_url = f"https://{domain}/admin/api/{API_VERSION}/graphql.json"
@@ -51,7 +56,19 @@ class ShopifyClient:
                 response.raise_for_status()
         except httpx.HTTPError as error:
             raise ShopifyUpstreamError("Unable to read Shopify products.") from error
+        except httpx.HTTPStatusError as error:
+            detail = error.response.text[:1000]
 
+            print(
+                "SHOPIFY UPSTREAM ERROR:",
+                error.response.status_code,
+                detail,
+            )
+
+            raise ShopifyUpstreamError(
+                f"Shopify query failed with "
+                f"{error.response.status_code}: {detail}"
+            ) from error
         payload = response.json()
         if errors := payload.get("errors"):
             raise ShopifyUpstreamError(str(errors))
