@@ -237,3 +237,39 @@ class ShopifyVariantsResponse(BaseModel):
     variants: list[ShopifyVariantRow] = Field(
         default_factory=list
     )     
+
+    
+class GA4ReferralSourceInspection(BaseModel):
+    source: str
+    sessions: int
+    active_users: int
+    engaged_sessions: int
+    engagement_rate: float
+    landing_page_count: int
+    inspection_score: int
+    classification: str
+    reasons: list[str] = Field(default_factory=list)
+
+
+class GA4ReferralInspectionPeriod(BaseModel):
+    start_date: date
+    end_date: date
+    sessions: int
+    active_users: int
+    engaged_sessions: int
+    engagement_rate: float
+    inspection_score: int
+    classification: str
+    reasons: list[str] = Field(default_factory=list)
+    sources: list[GA4ReferralSourceInspection] = Field(default_factory=list)
+
+
+class GA4ReferralInspectionResponse(BaseModel):
+    inspection: str
+    agent_inspected: bool
+    current_period: GA4ReferralInspectionPeriod
+    previous_period: GA4ReferralInspectionPeriod
+    session_change: int
+    session_change_percent: float | None = None
+    agent_conclusion: str
+    human_action_required: bool
