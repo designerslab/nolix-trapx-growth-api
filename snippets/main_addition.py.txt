@@ -1,0 +1,45 @@
+# app/main.py changes
+
+# 1) Add to imports from app.schemas:
+#    GA4ReferralInspectionResponse,
+
+# 2) Add this import:
+from app.services.agent_inspection import inspect_referral_traffic
+
+# 3) Add this endpoint after /ga4/channels:
+
+@app.get(
+    "/v1/brands/{brand}/ga4/referral-inspection",
+    response_model=GA4ReferralInspectionResponse,
+    dependencies=[Depends(require_api_key)],
+    tags=["ga4"],
+    operation_id="inspect_ga4_referrals",
+)
+async def inspect_ga4_referrals(
+    brand: str = Path(pattern="^(nolix|trapx)$"),
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    previous_start_date: date = Query(...),
+    previous_end_date: date = Query(...),
+    limit: int = Query(default=1000, ge=1, le=10000),
+) -> GA4ReferralInspectionResponse:
+    _validate_date_range(start_date, end_date)
+    _validate_date_range(previous_start_date, previous_end_date)
+
+    ga4 = _ga4_client(brand)
+
+    try:
+        result = inspect_referral_traffic(
+            ga4=ga4,
+            start_date=start_date,
+            end_date=end_date,
+            previous_start_date=previous_start_date,
+            previous_end_date=previous_end_date,
+            limit=limit,
+        )
+        return GA4ReferralInspectionResponse(**result)
+    except GA4UpstreamError as error:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(error),
+        ) from error

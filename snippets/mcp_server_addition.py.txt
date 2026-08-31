@@ -1,0 +1,23 @@
+# Add this tool to app/mcp_server.py after get_ga4_channels
+
+@mcp.tool(annotations=READ_ONLY)
+async def inspect_ga4_referrals(
+    brand: str,
+    start_date: str,
+    end_date: str,
+    previous_start_date: str,
+    previous_end_date: str,
+    limit: int = 1000,
+) -> dict:
+    """Inspect GA4 Referral traffic and score bot/traffic-quality risk."""
+
+    return await _get(
+        f"/v1/brands/{brand}/ga4/referral-inspection",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+            "previous_start_date": previous_start_date,
+            "previous_end_date": previous_end_date,
+            "limit": limit,
+        },
+    )
