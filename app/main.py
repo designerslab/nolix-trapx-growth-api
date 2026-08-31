@@ -11,6 +11,7 @@ from fastapi import (
 from app.services.agent_inspection import inspect_referral_traffic
 
 from app.config import get_settings
+from app.product_catalog_api import router as product_catalog_router
 from app.revenue_api import router as revenue_router
 from app.schemas import (
     GSCActionRow,
@@ -67,6 +68,7 @@ app = FastAPI(
 
 
 app.include_router(revenue_router)
+app.include_router(product_catalog_router)
 
 BRANDED_TERMS = {
     "nolix": [

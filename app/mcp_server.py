@@ -382,3 +382,39 @@ async def get_revenue_daily(
         },
     )
 
+@mcp.tool(annotations=READ_ONLY)
+async def get_shopify_products_enriched(
+    brand: str,
+    limit: int = 50,
+    page_cursor: str | None = None,
+) -> dict:
+    """Get enriched read-only Shopify product catalog data."""
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    params = {"limit": limit}
+    if page_cursor:
+        params["page_cursor"] = page_cursor
+
+    return await _get(
+        f"/v1/brands/{brand}/shopify/products/enriched",
+        params,
+    )
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def audit_shopify_products(
+    brand: str,
+    limit: int = 250,
+) -> dict:
+    """Audit Shopify product catalog completeness without changing Shopify."""
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    return await _get(
+        f"/v1/brands/{brand}/shopify/products/audit",
+        {"limit": limit},
+    )
+
