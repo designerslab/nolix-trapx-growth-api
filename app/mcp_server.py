@@ -342,3 +342,43 @@ async def inspect_ga4_referrals(
             "limit": limit,
         },
     )
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_revenue_summary(
+    brand: str,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Get read-only Shopify revenue summary."""
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    return await _get(
+        f"/v1/brands/{brand}/revenue/summary",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_revenue_daily(
+    brand: str,
+    start_date: str,
+    end_date: str,
+) -> dict:
+    """Get read-only daily Shopify revenue."""
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    return await _get(
+        f"/v1/brands/{brand}/revenue/daily",
+        {
+            "start_date": start_date,
+            "end_date": end_date,
+        },
+    )
+
