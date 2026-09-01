@@ -440,3 +440,22 @@ async def get_shopify_catalog_health(
         {"limit": limit},
     )
 
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_technical_audit(
+    brand: str,
+    max_pages: int = 25,
+) -> dict:
+    """Run a read-only technical SEO/GEO audit of the live site."""
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError(
+            "brand must be either 'nolix' or 'trapx'"
+        )
+
+    return await _get(
+        f"/v1/brands/{brand}/technical-audit",
+        {"max_pages": max_pages},
+    )
+
