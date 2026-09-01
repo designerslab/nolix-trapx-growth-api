@@ -418,3 +418,25 @@ async def audit_shopify_products(
         {"limit": limit},
     )
 
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_shopify_catalog_health(
+    brand: str,
+    limit: int = 250,
+) -> dict:
+    """Get report-friendly Shopify product catalog health."""
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError(
+            "brand must be either 'nolix' or 'trapx'"
+        )
+
+    return await _get(
+        (
+            f"/v1/brands/{brand}/shopify/products/"
+            "catalog-health"
+        ),
+        {"limit": limit},
+    )
+
