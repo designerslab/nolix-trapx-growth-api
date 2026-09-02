@@ -14,6 +14,14 @@ class Settings(BaseSettings):
     growth_api_public_url: str = "http://localhost:8000"
     growth_api_key: SecretStr | None = None
 
+    openai_api_key: SecretStr | None = None
+    openai_llm_visibility_model: str = "gpt-5.6-luna"
+
+    nolix_llm_competitors: str | None = None
+    trapx_llm_competitors: str | None = None
+
+    llm_visibility_data_path: str | None = None
+
     nolix_shopify_store_domain: str | None = None
     nolix_shopify_access_token: SecretStr | None = None
 

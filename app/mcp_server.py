@@ -8,6 +8,11 @@ READ_ONLY = ToolAnnotations(
     read_only_hint=True,
     open_world_hint=False,
 )
+
+MEASUREMENT = ToolAnnotations(
+    read_only_hint=True,
+    open_world_hint=True,
+)
 mcp = MCPServer(
     "Nolix Growth API",
     instructions=(
@@ -478,3 +483,87 @@ async def get_technical_audit(
             "max_pages": max_pages,
         },
     )
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_llm_visibility_status(
+    brand: str,
+) -> dict:
+    """Check OpenAI LLM visibility measurement configuration."""
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    return await _get(
+        f"/v1/brands/{brand}/llm-visibility/status"
+    )
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_llm_visibility_prompts(
+    brand: str,
+) -> dict:
+    """Get the default LLM visibility prompt set."""
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    return await _get(
+        f"/v1/brands/{brand}/llm-visibility/prompts"
+    )
+
+
+@mcp.tool(annotations=MEASUREMENT)
+async def run_llm_visibility_measurement(
+    brand: str,
+    prompt_limit: int = 1,
+) -> dict:
+    """Run OpenAI web-search visibility measurement.
+
+    This performs paid OpenAI API calls and may incur web-search/token charges.
+    """
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    headers = {}
+    if GROWTH_API_KEY:
+        headers["X-API-Key"] = GROWTH_API_KEY
+
+    async with httpx.AsyncClient(
+        timeout=300.0,
+        follow_redirects=True,
+    ) as client:
+        response = await client.post(
+            (
+                f"{GROWTH_API_PUBLIC_URL}"
+                f"/v1/brands/{brand}/llm-visibility/run"
+            ),
+            params={"prompt_limit": prompt_limit},
+            headers=headers,
+        )
+
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Growth API returned {response.status_code}: "
+                f"{response.text[:1000]}"
+            )
+
+        return response.json()
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_llm_visibility_history(
+    brand: str,
+    limit: int = 10,
+) -> dict:
+    """Get persisted OpenAI LLM visibility history."""
+    brand = brand.lower().strip()
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    return await _get(
+        f"/v1/brands/{brand}/llm-visibility/history",
+        {"limit": limit},
+    )
+
