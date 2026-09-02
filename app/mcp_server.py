@@ -516,7 +516,8 @@ async def get_llm_visibility_prompts(
 @mcp.tool(annotations=MEASUREMENT)
 async def run_llm_visibility_measurement(
     brand: str,
-    prompt_limit: int = 1,
+    prompt_limit: int = 8,
+    repeat_count: int = 3,
 ) -> dict:
     """Run OpenAI web-search visibility measurement.
 
@@ -539,7 +540,10 @@ async def run_llm_visibility_measurement(
                 f"{GROWTH_API_PUBLIC_URL}"
                 f"/v1/brands/{brand}/llm-visibility/run"
             ),
-            params={"prompt_limit": prompt_limit},
+            params={
+                "prompt_limit": prompt_limit,
+                "repeat_count": repeat_count,
+            },
             headers=headers,
         )
 
