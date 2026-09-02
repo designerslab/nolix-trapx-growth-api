@@ -6,7 +6,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path as FilePath
 from urllib.parse import urlparse
-
+import asyncio
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
 from pydantic import BaseModel, Field
@@ -687,6 +687,7 @@ async def run_llm_visibility_measurement(
     brand: str = Path(pattern="^(nolix|trapx)$"),
     prompt_limit: int = Query(default=1, ge=1, le=10),
     repeat_count: int = Query(default=3, ge=1, le=5),
+    prompt_index: int | None = Query(default=None, ge=0),
 ) -> LLMVisibilityRunResponse:
     if not _setting("openai_api_key"):
         raise HTTPException(
@@ -694,20 +695,44 @@ async def run_llm_visibility_measurement(
             detail="OPENAI_API_KEY is not configured.",
         )
 
-    prompts = DEFAULT_PROMPTS[brand][:prompt_limit]
+    all_prompts = DEFAULT_PROMPTS[brand]
+
+    if prompt_index is not None:
+        if prompt_index >= len(all_prompts):
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=(
+                    f"prompt_index must be between 0 and "
+                    f"{len(all_prompts) - 1} for brand '{brand}'."
+                ),
+            )
+
+        prompts = [all_prompts[prompt_index]]
+
+    else:
+        prompts = all_prompts[:prompt_limit]
     started_at = datetime.now(timezone.utc).isoformat()
 
     observations: list[LLMObservation] = []
 
     for prompt in prompts:
-        for trial in range(1, repeat_count + 1):
-            observations.append(
-                await _run_openai(
+        prompt_results = await asyncio.gather(
+            *[
+                _run_openai(
                     brand=brand,
                     prompt=prompt,
                     trial=trial,
                 )
-            )
+                for trial in range(
+                    1,
+                    repeat_count + 1,
+                )
+            ]
+        )
+
+        observations.extend(
+            prompt_results
+        )
 
     result = LLMVisibilityRunResponse(
         brand=brand,

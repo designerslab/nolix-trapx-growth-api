@@ -1,0 +1,89 @@
+*** Begin Patch
+*** Update File: app/llm_visibility_api.py
+@@
+-import json
+-import re
++import json
++import re
++import asyncio
+@@
+ async def run_llm_visibility_measurement(
+     brand: str = Path(pattern="^(nolix|trapx)$"),
+     prompt_limit: int = Query(default=1, ge=1, le=10),
+     repeat_count: int = Query(default=3, ge=1, le=5),
++    prompt_index: int | None = Query(default=None, ge=0),
+ ) -> LLMVisibilityRunResponse:
+@@
+-    prompts = DEFAULT_PROMPTS[brand][:prompt_limit]
++    all_prompts = DEFAULT_PROMPTS[brand]
++
++    if prompt_index is not None:
++        if prompt_index >= len(all_prompts):
++            raise HTTPException(
++                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
++                detail=(
++                    f"prompt_index must be between 0 and "
++                    f"{len(all_prompts) - 1} for brand '{brand}'."
++                ),
++            )
++        prompts = [all_prompts[prompt_index]]
++    else:
++        prompts = all_prompts[:prompt_limit]
+@@
+-    observations: list[LLMObservation] = []
+-
+-    for prompt in prompts:
+-        for trial in range(1, repeat_count + 1):
+-            observations.append(
+-                await _run_openai(
+-                    brand=brand,
+-                    prompt=prompt,
+-                    trial=trial,
+-                )
+-            )
++    observations: list[LLMObservation] = []
++
++    for prompt in prompts:
++        prompt_results = await asyncio.gather(
++            *[
++                _run_openai(
++                    brand=brand,
++                    prompt=prompt,
++                    trial=trial,
++                )
++                for trial in range(1, repeat_count + 1)
++            ]
++        )
++        observations.extend(prompt_results)
+*** Update File: app/mcp_server.py
+@@
+ async def run_llm_visibility_measurement(
+     brand: str,
+-    prompt_limit: int = 8,
++    prompt_limit: int = 1,
+     repeat_count: int = 3,
++    prompt_index: int | None = None,
+ ) -> dict:
+@@
+-        response = await client.post(
++        params = {
++            "prompt_limit": prompt_limit,
++            "repeat_count": repeat_count,
++        }
++
++        if prompt_index is not None:
++            params["prompt_index"] = prompt_index
++
++        response = await client.post(
+             (
+                 f"{GROWTH_API_PUBLIC_URL}"
+                 f"/v1/brands/{brand}/llm-visibility/run"
+             ),
+-            params={
+-                "prompt_limit": prompt_limit,
+-                "repeat_count": repeat_count,
+-            },
++            params=params,
+             headers=headers,
+         )
+*** End Patch
