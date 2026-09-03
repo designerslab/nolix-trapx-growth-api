@@ -519,6 +519,7 @@ async def run_llm_visibility_measurement(
     prompt_limit: int = 1,
     repeat_count: int = 3,
     prompt_index: int | None = None,
+    baseline_id: str | None = None,
 ) -> dict:
     """Run OpenAI web-search visibility measurement.
 
@@ -543,6 +544,9 @@ async def run_llm_visibility_measurement(
 
         if prompt_index is not None:
             params["prompt_index"] = prompt_index
+
+        if baseline_id:
+            params["baseline_id"] = baseline_id
 
         response = await client.post(
             (
@@ -577,3 +581,23 @@ async def get_llm_visibility_history(
         {"limit": limit},
     )
 
+
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_llm_visibility_baselines(
+    brand: str,
+    limit: int = 10,
+) -> dict:
+    # Get grouped persisted GEO baselines with week-over-week deltas.
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError(
+            "brand must be either 'nolix' or 'trapx'"
+        )
+
+    return await _get(
+        f"/v1/brands/{brand}/llm-visibility/baselines",
+        {"limit": limit},
+    )
