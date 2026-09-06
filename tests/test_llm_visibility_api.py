@@ -6,7 +6,7 @@ from app.llm_visibility_api import (
     _citation_domain,
     _extract_openai_response,
     _own_domain_cited,
-    _summarize,
+    _summary_from,
 )
 
 
@@ -95,7 +95,7 @@ def test_summary():
         ),
     ]
 
-    summary = _summarize(observations)
+    summary = _summary_from(observations)
     assert summary.mention_rate == 50.0
     assert summary.recommendation_rate == 50.0
     assert summary.own_domain_citation_rate == 50.0

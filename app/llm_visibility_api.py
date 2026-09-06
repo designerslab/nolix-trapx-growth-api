@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.security import require_api_key
+from app.services.llm_visibility_store import persist_visibility_run, read_visibility_runs
 
 router = APIRouter()
 
@@ -615,44 +616,24 @@ def _history_path() -> FilePath | None:
     return FilePath(raw) if raw else None
 
 
-def _persist_run(payload: dict) -> bool:
-    path = _history_path()
-
-    if path is None:
-        return False
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
-
-    return True
+def _persist_run(
+    payload: dict,
+) -> bool:
+    return persist_visibility_run(
+        payload,
+        get_settings(),
+    )
 
 
-def _read_history(brand: str, limit: int) -> list[dict]:
-    path = _history_path()
-
-    if path is None or not path.exists():
-        return []
-
-    runs: list[dict] = []
-
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
-
-            if not line:
-                continue
-
-            try:
-                item = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            if item.get("brand") == brand:
-                runs.append(item)
-
-    return runs[-limit:][::-1]
+def _read_history(
+    brand: str,
+    limit: int,
+) -> list[dict]:
+    return read_visibility_runs(
+        brand,
+        limit,
+        get_settings(),
+    )
 
 
 
@@ -732,37 +713,24 @@ def _read_baselines(
     brand: str,
     limit: int,
 ) -> list[dict]:
-    path = _history_path()
-
-    if path is None or not path.exists():
-        return []
+    source_runs = read_visibility_runs(
+        brand,
+        max(limit * 16, 200),
+        get_settings(),
+    )
 
     grouped: dict[str, list[dict]] = {}
 
-    with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
-            line = line.strip()
+    for item in source_runs:
+        baseline_id = item.get("baseline_id")
 
-            if not line:
-                continue
+        if not baseline_id:
+            continue
 
-            try:
-                item = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            if item.get("brand") != brand:
-                continue
-
-            baseline_id = item.get("baseline_id")
-
-            if not baseline_id:
-                continue
-
-            grouped.setdefault(
-                str(baseline_id),
-                [],
-            ).append(item)
+        grouped.setdefault(
+            str(baseline_id),
+            [],
+        ).append(item)
 
     baselines = [
         _baseline_summary_from_records(

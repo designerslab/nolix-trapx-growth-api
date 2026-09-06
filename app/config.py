@@ -22,6 +22,15 @@ class Settings(BaseSettings):
 
     llm_visibility_data_path: str | None = None
 
+    aws_region: str = "us-east-1"
+    llm_visibility_dynamodb_table: str | None = None
+    mcp_allowed_hosts: str = (
+        "localhost,localhost:*,"
+        "127.0.0.1,127.0.0.1:*,"
+        "nolix-trapx-growth-api.onrender.com,"
+        "nolix-trapx-growth-api.onrender.com:*"
+    )
+
     nolix_shopify_store_domain: str | None = None
     nolix_shopify_access_token: SecretStr | None = None
 

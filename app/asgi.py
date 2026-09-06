@@ -7,8 +7,17 @@ from starlette.middleware.cors import CORSMiddleware
 
 from mcp.server.transport_security import TransportSecuritySettings
 
+from app.config import get_settings
 from app.main import app as fastapi_app
 from app.mcp_server import mcp
+
+
+settings = get_settings()
+# allowed_hosts = [
+#     item.strip()
+#     for item in settings.mcp_allowed_hosts.split(",")
+#     if item.strip()
+# ]
 
 
 security = TransportSecuritySettings(
@@ -16,12 +25,32 @@ security = TransportSecuritySettings(
     allowed_hosts=[
         "nolix-trapx-growth-api.onrender.com",
         "nolix-trapx-growth-api.onrender.com:*",
+        "no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws",
+        "no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws:*",
     ],
     allowed_origins=[
         "https://chatgpt.com",
         "https://chat.openai.com",
     ],
 )
+
+
+
+# allowed_hosts=[
+#     "nolix-trapx-growth-api.onrender.com",
+#     "nolix-trapx-growth-api.onrender.com:*",
+#     "no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws",
+#     "no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws:*",
+# ],
+
+# security = TransportSecuritySettings(
+#     enable_dns_rebinding_protection=True,
+#     allowed_hosts=allowed_hosts,
+#     allowed_origins=[
+#         "https://chatgpt.com",
+#         "https://chat.openai.com",
+#     ],
+# )
 
 
 mcp_app = mcp.streamable_http_app(
