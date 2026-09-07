@@ -27,7 +27,28 @@ GROWTH_API_PUBLIC_URL = os.getenv(
 ).rstrip("/")
 
 GROWTH_API_KEY = os.getenv("GROWTH_API_KEY")
+async def _post_json(path: str, payload: dict) -> dict:
+    headers = {"Content-Type": "application/json"}
+    if GROWTH_API_KEY:
+        headers["X-API-Key"] = GROWTH_API_KEY
 
+    async with httpx.AsyncClient(
+        timeout=240.0,
+        follow_redirects=True,
+    ) as client:
+        response = await client.post(
+            f"{GROWTH_API_PUBLIC_URL}{path}",
+            headers=headers,
+            json=payload,
+        )
+
+        if response.status_code >= 400:
+            raise RuntimeError(
+                f"Growth API returned {response.status_code}: "
+                f"{response.text[:1000]}"
+            )
+
+        return response.json()
 
 async def _get(
     path: str,
@@ -626,4 +647,38 @@ async def get_content_opportunities(
     return await _get(
         f"/v1/brands/{brand}/content-opportunities",
         params,
+    )
+@mcp.tool(annotations=MEASUREMENT)
+async def generate_content_draft(
+    brand: str,
+    target_query: str,
+    target_page: str | None = None,
+    strategic_intent: str | None = None,
+    opportunity_kind: str = "manual",
+    product_ids: list[str] | None = None,
+    content_type: str = "article",
+    notes: str | None = None,
+) -> dict:
+    """Generate an evidence-grounded draft for human review.
+
+    May call OpenAI and incur token charges.
+    Never publishes or modifies Shopify/site content.
+    Product facts are grounded only in explicitly supplied Shopify product IDs.
+    """
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    return await _post_json(
+        f"/v1/brands/{brand}/content-drafts",
+        {
+            "target_query": target_query,
+            "target_page": target_page,
+            "strategic_intent": strategic_intent,
+            "opportunity_kind": opportunity_kind,
+            "product_ids": product_ids or [],
+            "content_type": content_type,
+            "notes": notes,
+        },
     )

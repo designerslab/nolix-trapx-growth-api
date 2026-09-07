@@ -1,9 +1,10 @@
 from datetime import date
 
 from app.content_opportunity_api import (
+    _business_relevance,
     _page_path,
-    _priority_score,
     _resolve_periods,
+    _strategic_intent,
 )
 
 
@@ -28,29 +29,49 @@ def test_resolve_periods_uses_equal_previous_window():
     assert previous_end == date(2026, 7, 31)
 
 
-def test_priority_score_rewards_page_one_opportunity_and_geo_gap():
-    score = _priority_score(
-        current={
-            "impressions": 20,
-            "position": 8,
-            "ctr": 0.02,
-        },
-        previous={
-            "impressions": 10,
-            "position": 12,
-        },
-        engagement={
-            "sessions": 10,
-            "engagement_rate": 0.30,
-        },
-        technical_issues=[],
-        geo={
-            "unbranded_mention_rate": 61.9,
-            "unbranded_recommendation_rate": 33.3,
-            "unbranded_own_domain_citation_rate": 14.3,
-        },
-        product_matches=[],
+def test_business_relevance_core_nolix_topic():
+    result = _business_relevance(
+        "nolix",
+        "commercial water leak detection",
+        "/blogs/news/leak-monitoring",
     )
 
-    assert score >= 80
-    assert score <= 100
+    assert result.level == "high"
+    assert result.score > 0
+    assert "leak monitoring" in result.matched_themes
+
+
+def test_business_relevance_discount_broad_repair():
+    result = _business_relevance(
+        "nolix",
+        "how to repair water damage",
+        "/blogs/news/water-damage-repair",
+    )
+
+    assert result.level == "low"
+    assert result.score < 0
+
+
+def test_strategic_intent_commercial():
+    assert (
+        _strategic_intent(
+            "commercial facility leak detection sensors"
+        )
+        == "commercial"
+    )
+
+
+def test_strategic_intent_consumer():
+    assert (
+        _strategic_intent(
+            "water damage not covered by insurance"
+        )
+        == "consumer_informational"
+    )
+
+
+def test_strategic_intent_product_nav():
+    assert (
+        _strategic_intent("pipex")
+        == "navigational"
+    )
