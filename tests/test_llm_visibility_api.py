@@ -56,10 +56,12 @@ def test_extract_openai_response():
         ]
     }
 
-    answer, citations, queries = _extract_openai_response(data)
+    answer, citations, queries, web_search_used = _extract_openai_response(data)
+
     assert answer == "Nolix is one option."
     assert citations[0].domain == "nolix.ai"
     assert queries == ["smart rodent monitoring"]
+    assert web_search_used is True
 
 
 def test_own_domain_citation():
@@ -74,10 +76,12 @@ def test_summary():
         LLMObservation(
             model="test",
             prompt="a",
+            trial=1,
             answer="Nolix is a good option.",
             brand_mentioned=True,
             brand_recommended=True,
             own_domain_cited=True,
+            web_search_used=True,
             citations=[
                 CitationSource(
                     url="https://nolix.ai/",
@@ -88,10 +92,12 @@ def test_summary():
         LLMObservation(
             model="test",
             prompt="b",
+            trial=1,
             answer="Other options.",
             brand_mentioned=False,
             brand_recommended=False,
             own_domain_cited=False,
+            web_search_used=False,
         ),
     ]
 

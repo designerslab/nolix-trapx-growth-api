@@ -584,3 +584,46 @@ async def get_llm_visibility_baselines(
         f"/v1/brands/{brand}/llm-visibility/baselines",
         {"limit": limit},
     )
+@mcp.tool(annotations=READ_ONLY)
+async def get_content_opportunities(
+    brand: str,
+    current_start_date: str | None = None,
+    current_end_date: str | None = None,
+    previous_start_date: str | None = None,
+    previous_end_date: str | None = None,
+    limit: int = 10,
+    min_impressions: float = 3,
+    max_pages: int = 25,
+) -> dict:
+    """Get prioritized multi-source content opportunities.
+
+    Combines GSC search evidence, GA4 landing-page engagement,
+    the latest complete GEO baseline, technical audit findings,
+    and Shopify catalog evidence. Shopify evidence confirms
+    product existence only and must not be treated as proof of
+    performance, ROI, certifications, deployment scale, or suitability.
+    """
+    brand = brand.lower().strip()
+
+    if brand not in {"nolix", "trapx"}:
+        raise ValueError("brand must be either 'nolix' or 'trapx'")
+
+    params = {
+        "limit": limit,
+        "min_impressions": min_impressions,
+        "max_pages": max_pages,
+    }
+
+    if current_start_date:
+        params["current_start_date"] = current_start_date
+    if current_end_date:
+        params["current_end_date"] = current_end_date
+    if previous_start_date:
+        params["previous_start_date"] = previous_start_date
+    if previous_end_date:
+        params["previous_end_date"] = previous_end_date
+
+    return await _get(
+        f"/v1/brands/{brand}/content-opportunities",
+        params,
+    )
