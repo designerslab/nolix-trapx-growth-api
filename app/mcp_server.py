@@ -764,3 +764,21 @@ async def review_content_draft(
             "notes": notes,
         },
     )
+@mcp.tool(annotations=READ_ONLY)
+async def preview_content_publish_gate(
+    brand: str,
+    draft_id: str,
+) -> dict:
+    """Preview whether an approved stored draft passes
+    the publishing gate.
+
+    This performs NO publishing and NO Shopify writes.
+    """
+    return await _post_json(
+        (
+            f"/v1/brands/{brand}/"
+            f"content-publishing-gates/"
+            f"{draft_id}/preview"
+        ),
+        {},
+    )

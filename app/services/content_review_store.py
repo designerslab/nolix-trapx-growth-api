@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import datetime, timezone
 from typing import Any
@@ -28,6 +29,16 @@ def _table(settings: Any):
     ).Table(table_name)
 
 
+def content_payload_hash(payload: dict) -> str:
+    canonical = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def create_review_record(
     *,
     brand: str,
@@ -53,6 +64,7 @@ def create_review_record(
         "updated_at": now,
         "reviewed_at": None,
         "publish_allowed": False,
+        "approved_content_hash": None,
         "draft_payload": draft_payload,
     }
 
@@ -72,7 +84,8 @@ def create_review_record(
             ),
         },
         ConditionExpression=(
-            "attribute_not_exists(pk) AND attribute_not_exists(sk)"
+            "attribute_not_exists(pk) "
+            "AND attribute_not_exists(sk)"
         ),
     )
 
@@ -90,9 +103,14 @@ def get_review_record(
         raise RuntimeError("DynamoDB review storage is not configured.")
 
     response = table.get_item(
-        Key={"pk": brand, "sk": f"draft#{draft_id}"}
+        Key={
+            "pk": brand,
+            "sk": f"draft#{draft_id}",
+        }
     )
+
     item = response.get("Item")
+
     if not item or not item.get("payload_json"):
         return None
 
@@ -120,6 +138,7 @@ def list_review_records(
     )
 
     records = []
+
     for item in response.get("Items", []):
         raw = item.get("payload_json")
         if not raw:
@@ -133,6 +152,7 @@ def list_review_records(
         key=lambda item: item.get("created_at") or "",
         reverse=True,
     )
+
     return records[:limit]
 
 
@@ -154,15 +174,22 @@ def update_review_record(
         draft_id=draft_id,
         settings=settings,
     )
+
     if existing is None:
         raise KeyError(draft_id)
 
-    if decision not in {"approved", "needs_changes", "rejected"}:
+    if decision not in {
+        "approved",
+        "needs_changes",
+        "rejected",
+    }:
         raise ValueError(
-            "decision must be approved, needs_changes, or rejected"
+            "decision must be approved, "
+            "needs_changes, or rejected"
         )
 
     now = datetime.now(timezone.utc).isoformat()
+
     existing["status"] = decision
     existing["reviewer"] = reviewer
     existing["review_notes"] = notes
@@ -170,13 +197,26 @@ def update_review_record(
     existing["reviewed_at"] = now
     existing["publish_allowed"] = False
 
+    if decision == "approved":
+        existing["approved_content_hash"] = content_payload_hash(
+            existing["draft_payload"]
+        )
+    else:
+        existing["approved_content_hash"] = None
+
     table.update_item(
-        Key={"pk": brand, "sk": f"draft#{draft_id}"},
+        Key={
+            "pk": brand,
+            "sk": f"draft#{draft_id}",
+        },
         UpdateExpression=(
-            "SET #status = :status, updated_at = :updated_at, "
+            "SET #status = :status, "
+            "updated_at = :updated_at, "
             "payload_json = :payload_json"
         ),
-        ExpressionAttributeNames={"#status": "status"},
+        ExpressionAttributeNames={
+            "#status": "status",
+        },
         ExpressionAttributeValues={
             ":status": decision,
             ":updated_at": now,
@@ -187,7 +227,8 @@ def update_review_record(
             ),
         },
         ConditionExpression=(
-            "attribute_exists(pk) AND attribute_exists(sk)"
+            "attribute_exists(pk) "
+            "AND attribute_exists(sk)"
         ),
     )
 
