@@ -4,6 +4,11 @@ from datetime import date
 import httpx
 from mcp.server import MCPServer
 from mcp.types import ToolAnnotations
+REVIEW_WRITE = ToolAnnotations(
+    read_only_hint=False,
+    open_world_hint=False,
+)
+
 READ_ONLY = ToolAnnotations(
     read_only_hint=True,
     open_world_hint=False,
@@ -679,6 +684,83 @@ async def generate_content_draft(
             "opportunity_kind": opportunity_kind,
             "product_ids": product_ids or [],
             "content_type": content_type,
+            "notes": notes,
+        },
+    )
+
+@mcp.tool(annotations=REVIEW_WRITE)
+async def submit_content_draft_for_review(
+    brand: str,
+    draft_payload: dict,
+    reviewer_hint: str | None = None,
+) -> dict:
+    """Store a generated draft for explicit human review.
+
+    This does not publish or modify Shopify/site content.
+    """
+    return await _post_json(
+        f"/v1/brands/{brand}/content-reviews",
+        {
+            "draft_payload": draft_payload,
+            "reviewer_hint": reviewer_hint,
+        },
+    )
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def list_content_reviews(
+    brand: str,
+    limit: int = 20,
+) -> dict:
+    """List stored content drafts and their review status."""
+    return await _get(
+        f"/v1/brands/{brand}/content-reviews",
+        {"limit": limit},
+    )
+
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_content_review(
+    brand: str,
+    draft_id: str,
+) -> dict:
+    """Get one stored content draft review record."""
+    return await _get(
+        f"/v1/brands/{brand}/content-reviews/{draft_id}"
+    )
+
+
+@mcp.tool(annotations=REVIEW_WRITE)
+async def review_content_draft(
+    brand: str,
+    draft_id: str,
+    decision: str,
+    reviewer: str,
+    notes: str | None = None,
+) -> dict:
+    """Record a human review decision for a stored draft.
+
+    decision must be approved, needs_changes, or rejected.
+    Approval still does NOT grant publishing permission in V1.
+    """
+    if decision not in {
+        "approved",
+        "needs_changes",
+        "rejected",
+    }:
+        raise ValueError(
+            "decision must be approved, "
+            "needs_changes, or rejected"
+        )
+
+    return await _post_json(
+        (
+            f"/v1/brands/{brand}/content-reviews/"
+            f"{draft_id}/decision"
+        ),
+        {
+            "decision": decision,
+            "reviewer": reviewer,
             "notes": notes,
         },
     )

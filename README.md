@@ -1,38 +1,109 @@
-# Nolix & TrapX Growth API
+# Human Approval / Draft Review Workflow V1
 
-Small, read-only FastAPI service that will provide trusted source data to the Growth Agent and, later, a GPT Action.
+This milestone adds persistent review state while keeping publishing disabled.
 
-## Current scope
+## State flow
 
-- `GET /health` — service and integration readiness
-- `GET /v1/brands/{brand}/shopify/products` — read-only Shopify product inventory for `nolix` or `trapx`; supports `limit` and `page_cursor`
-- GSC and GA4 are intentionally placeholders until the Shopify integration is verified.
+`requires_human_approval -> approved | needs_changes | rejected`
 
-No endpoint modifies Shopify, Google Search Console, or GA4 data. Tokens are read from `.env` on the server and are neither returned nor stored in source files.
+Even when status is `approved`:
 
-## Local setup
+`publish_allowed = false`
 
-1. Create a virtual environment: `python -m venv .venv`
-2. Activate it in PowerShell: `.\.venv\Scripts\Activate.ps1`
-3. Install the project: `python -m pip install -e ".[dev]"`
-4. Copy `.env.example` to `.env`. Leave Shopify tokens blank to run the API shell safely.
-5. Run: `uvicorn app.main:app --reload`
-6. Open `http://localhost:8000/docs` for the generated OpenAPI contract.
+Publishing is intentionally NOT implemented in this milestone.
 
-Run tests with `pytest`.
+## Storage
 
-## Shopify setup, next
+The workflow reuses the existing DynamoDB table configured by:
 
-Create one dedicated Growth Read-Only custom app per Shopify store with only the Admin API scopes required for reading product data (initially `read_products`). Put each store domain and token in the matching environment variable. Do not reuse the article-writing app token, which has broader write permission. Do not use a storefront token or commit a `.env` file.
+`LLM_VISIBILITY_DYNAMODB_TABLE`
 
-After this endpoint is working against both stores, add GSC read access and GA4 reporting access as separate service modules and routes.
+No new AWS table is required.
 
-## Deployment / GPT Action
+Records use:
+- partition key: brand
+- sort key: `draft#{draft_id}`
+- kind: `content_draft_review`
 
-Deploy behind HTTPS, set `GROWTH_API_KEY`, and configure the GPT Action to send that secret in the `X-API-Key` header. The generated OpenAPI schema is available at `/openapi.json`.
+## Install
 
-### Render deployment
+1. Add `app/services/content_review_store.py`
+2. Add `app/content_review_api.py`
+3. Add `tests/test_content_review_api.py`
+4. Apply `main_changes.txt`
+5. Apply `mcp_server_changes.txt`
+6. Run:
 
-The included `render.yaml` provisions a FastAPI web service with a `/health` health check. Push this folder to a **private** Git repository, then in Render select **New → Blueprint** and select that repository. Enter the Shopify values and a long random `GROWTH_API_KEY` in Render's Environment section; do not upload or commit `.env`.
+```powershell
+python -m pytest -q
+```
 
-After deployment, set `GROWTH_API_PUBLIC_URL` to the assigned HTTPS service URL and redeploy. Verify `https://your-service.onrender.com/health` before connecting the GPT Action.
+## AWS REST test
+
+First generate a draft as before so `$d` contains the Content Generator response.
+
+Submit it for review:
+
+```powershell
+$reviewBody = @{
+    draft_payload = $d
+    reviewer_hint = "Human review required"
+} | ConvertTo-Json -Depth 30
+
+$review = Invoke-RestMethod `
+  -Method POST `
+  -Uri "https://no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws/v1/brands/nolix/content-reviews" `
+  -Headers $headers `
+  -ContentType "application/json" `
+  -Body $reviewBody
+
+$review.draft_id
+$review.status
+$review.publish_allowed
+```
+
+Expected:
+
+```text
+requires_human_approval
+False
+```
+
+Then record a review decision:
+
+```powershell
+$decisionBody = @{
+    decision = "approved"
+    reviewer = "human-reviewer"
+    notes = "Reviewed manually. Approved for future publishing workflow."
+} | ConvertTo-Json
+
+$approved = Invoke-RestMethod `
+  -Method POST `
+  -Uri "https://no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws/v1/brands/nolix/content-reviews/$($review.draft_id)/decision" `
+  -Headers $headers `
+  -ContentType "application/json" `
+  -Body $decisionBody
+
+$approved.status
+$approved.reviewer
+$approved.publish_allowed
+```
+
+Expected:
+
+```text
+approved
+human-reviewer
+False
+```
+
+That final `False` is intentional: approval and permission to publish remain separate.
+
+## Growth Agent behavior
+
+- Generate a draft.
+- Submit it with `submit_content_draft_for_review`.
+- Only call `review_content_draft` after an explicit human decision.
+- Never infer approval from praise, draft quality, or silence.
+- `publish_allowed` must remain false throughout V1.

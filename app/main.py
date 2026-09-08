@@ -11,6 +11,8 @@ from fastapi import (
 from app.services.agent_inspection import inspect_referral_traffic
 from app.content_opportunity_api import router as content_opportunity_router
 from app.content_draft_api import router as content_draft_router
+from app.content_review_api import router as content_review_router
+from app.content_review_api import router as content_review_router
 
 from app.config import get_settings
 from app.llm_visibility_api import router as llm_visibility_router
@@ -70,12 +72,15 @@ app = FastAPI(
     ],
 )
 
-app.include_router(content_draft_router)
+
 app.include_router(revenue_router)
 app.include_router(product_catalog_router)
 app.include_router(technical_audit_router)
 app.include_router(llm_visibility_router)
 app.include_router(content_opportunity_router)
+
+app.include_router(content_draft_router)
+app.include_router(content_review_router)
 BRANDED_TERMS = {
     "nolix": [
         "nolix",
