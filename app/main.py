@@ -60,6 +60,7 @@ from app.services.shopify import (
 from app.content_publish_gate_api import (
     router as content_publish_gate_router,
 )
+from app.content_publish_api import router as content_publish_router
 
 app = FastAPI(
     title="Nolix & TrapX Growth API",
@@ -85,6 +86,7 @@ app.include_router(content_opportunity_router)
 app.include_router(content_draft_router)
 app.include_router(content_review_router)
 app.include_router(content_publish_gate_router)
+app.include_router(content_publish_router)
 
 BRANDED_TERMS = {
     "nolix": [

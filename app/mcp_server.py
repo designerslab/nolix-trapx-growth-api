@@ -782,3 +782,10 @@ async def preview_content_publish_gate(
         ),
         {},
     )
+@mcp.tool(annotations=REVIEW_WRITE)
+async def publish_content_draft(brand:str,draft_id:str,actor:str,idempotency_key:str,blog_id:str|None=None,blog_handle:str|None=None)->dict:
+    """Create an UNPUBLISHED Shopify blog article from an approved draft."""
+    p={"actor":actor,"idempotency_key":idempotency_key}
+    if blog_id:p["blog_id"]=blog_id
+    if blog_handle:p["blog_handle"]=blog_handle
+    return await _post_json(f"/v1/brands/{brand}/content-reviews/{draft_id}/publish",p)
