@@ -61,6 +61,8 @@ from app.content_publish_gate_api import (
     router as content_publish_gate_router,
 )
 from app.content_publish_api import router as content_publish_router
+from app.agent_platform.router import router as agent_platform_router
+from app.seo_agent.router import router as seo_agent_router
 
 app = FastAPI(
     title="Nolix & TrapX Growth API",
@@ -87,6 +89,8 @@ app.include_router(content_draft_router)
 app.include_router(content_review_router)
 app.include_router(content_publish_gate_router)
 app.include_router(content_publish_router)
+app.include_router(agent_platform_router)
+app.include_router(seo_agent_router)
 
 BRANDED_TERMS = {
     "nolix": [

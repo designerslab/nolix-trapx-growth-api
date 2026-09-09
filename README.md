@@ -1,109 +1,25 @@
-# Human Approval / Draft Review Workflow V1
+# SEO Agent V1 / aws-v11
 
-This milestone adds persistent review state while keeping publishing disabled.
+Adds:
+- ranked SEO action queue
+- automatic execution routing
+- automatic draft preparation
+- automatic submission to Human Approval Workflow
+- no external write before approval
 
-## State flow
+Install:
+1. Copy app/seo_agent/
+2. Copy tests/test_seo_agent.py
+3. Apply main_changes.txt
+4. Apply mcp_server_changes.txt
+5. Apply agent_registry_changes.txt
+6. Run: python -m pytest -q
 
-`requires_human_approval -> approved | needs_changes | rejected`
+After deploy:
+GET /v1/agents/seo/nolix/action-queue?limit=10
 
-Even when status is `approved`:
+To prepare an action:
+POST /v1/agents/seo/nolix/prepare-action
 
-`publish_allowed = false`
-
-Publishing is intentionally NOT implemented in this milestone.
-
-## Storage
-
-The workflow reuses the existing DynamoDB table configured by:
-
-`LLM_VISIBILITY_DYNAMODB_TABLE`
-
-No new AWS table is required.
-
-Records use:
-- partition key: brand
-- sort key: `draft#{draft_id}`
-- kind: `content_draft_review`
-
-## Install
-
-1. Add `app/services/content_review_store.py`
-2. Add `app/content_review_api.py`
-3. Add `tests/test_content_review_api.py`
-4. Apply `main_changes.txt`
-5. Apply `mcp_server_changes.txt`
-6. Run:
-
-```powershell
-python -m pytest -q
-```
-
-## AWS REST test
-
-First generate a draft as before so `$d` contains the Content Generator response.
-
-Submit it for review:
-
-```powershell
-$reviewBody = @{
-    draft_payload = $d
-    reviewer_hint = "Human review required"
-} | ConvertTo-Json -Depth 30
-
-$review = Invoke-RestMethod `
-  -Method POST `
-  -Uri "https://no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws/v1/brands/nolix/content-reviews" `
-  -Headers $headers `
-  -ContentType "application/json" `
-  -Body $reviewBody
-
-$review.draft_id
-$review.status
-$review.publish_allowed
-```
-
-Expected:
-
-```text
-requires_human_approval
-False
-```
-
-Then record a review decision:
-
-```powershell
-$decisionBody = @{
-    decision = "approved"
-    reviewer = "human-reviewer"
-    notes = "Reviewed manually. Approved for future publishing workflow."
-} | ConvertTo-Json
-
-$approved = Invoke-RestMethod `
-  -Method POST `
-  -Uri "https://no-c5cdefdf346043a2bca11a744be31437.ecs.ap-south-1.on.aws/v1/brands/nolix/content-reviews/$($review.draft_id)/decision" `
-  -Headers $headers `
-  -ContentType "application/json" `
-  -Body $decisionBody
-
-$approved.status
-$approved.reviewer
-$approved.publish_allowed
-```
-
-Expected:
-
-```text
-approved
-human-reviewer
-False
-```
-
-That final `False` is intentional: approval and permission to publish remain separate.
-
-## Growth Agent behavior
-
-- Generate a draft.
-- Submit it with `submit_content_draft_for_review`.
-- Only call `review_content_draft` after an explicit human decision.
-- Never infer approval from praise, draft quality, or silence.
-- `publish_allowed` must remain false throughout V1.
+Prepared actions enter:
+requires_human_approval -> approval -> Publishing Gate -> controlled Shopify write

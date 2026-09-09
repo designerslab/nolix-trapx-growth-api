@@ -13,7 +13,13 @@ class PublishDraftRequest(BaseModel):
     blog_id:str|None=None
     blog_handle:str|None=None
 def _draft_fields(p):
-    d=p.get("draft") or {}; title=d.get("title") or p.get("title"); body=d.get("body_html") or d.get("body") or d.get("content") or p.get("body_html"); handle=d.get("slug") or d.get("handle") or p.get("handle")
+    d=p.get("draft") or {}; title=d.get("title") or p.get("title");body=(
+    d.get("body_html")
+    or d.get("body_markdown")
+    or d.get("body")
+    or d.get("content")
+    or p.get("body_html")
+); handle=d.get("slug") or d.get("handle") or p.get("handle")
     if not isinstance(title,str) or not title.strip(): raise ValueError("Draft title is missing.")
     if not isinstance(body,str) or not body.strip(): raise ValueError("Draft body/content is missing.")
     return title.strip(),body,str(handle).strip() if handle else None

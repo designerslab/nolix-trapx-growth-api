@@ -789,3 +789,43 @@ async def publish_content_draft(brand:str,draft_id:str,actor:str,idempotency_key
     if blog_id:p["blog_id"]=blog_id
     if blog_handle:p["blog_handle"]=blog_handle
     return await _post_json(f"/v1/brands/{brand}/content-reviews/{draft_id}/publish",p)
+@mcp.tool(annotations=READ_ONLY)
+async def get_seo_agent_action_queue(
+    brand: str,
+    limit: int = 10,
+    min_impressions: float = 1,
+    max_pages: int = 25,
+) -> dict:
+    """Get the SEO Agent ranked execution queue."""
+    return await _get(
+        f"/v1/agents/seo/{brand}/action-queue",
+        {
+            "limit": limit,
+            "min_impressions": min_impressions,
+            "max_pages": max_pages,
+        },
+    )
+
+
+@mcp.tool(annotations=REVIEW_WRITE)
+async def prepare_seo_agent_action(
+    brand: str,
+    query: str,
+    action_type: str,
+    page: str | None = None,
+    strategic_intent: str | None = None,
+    product_ids: list[str] | None = None,
+    notes: str | None = None,
+) -> dict:
+    """Prepare an SEO action as a draft and submit it for human review."""
+    return await _post_json(
+        f"/v1/agents/seo/{brand}/prepare-action",
+        {
+            "query": query,
+            "page": page,
+            "action_type": action_type,
+            "strategic_intent": strategic_intent,
+            "product_ids": product_ids or [],
+            "notes": notes,
+        },
+    )
