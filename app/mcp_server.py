@@ -829,3 +829,53 @@ async def prepare_seo_agent_action(
             "notes": notes,
         },
     )
+@mcp.tool(annotations=REVIEW_WRITE)
+async def repair_shopify_article_formatting(
+    brand: str,
+    draft_id: str,
+    article_id: str,
+    actor: str,
+) -> dict:
+    """Repair formatting of an existing unpublished Shopify article.
+
+    Re-runs the publishing gate and forces the article to remain unpublished.
+    """
+    return await _post_json(
+        (
+            f"/v1/brands/{brand}/content-reviews/"
+            f"{draft_id}/repair-shopify-article"
+        ),
+        {
+            "article_id": article_id,
+            "actor": actor,
+        },
+    )
+@mcp.tool(annotations=READ_ONLY)
+async def get_growth_weekly_report(brand: str) -> dict:
+    """Get the Growth Agent weekly report payload."""
+    return await _get(f"/v1/agents/growth/{brand}/weekly-report", {})
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_new_growth_keywords(
+    brand: str,
+    current_days: int = 7,
+    min_impressions: float = 2,
+    limit: int = 50,
+) -> dict:
+    """Find GSC queries appearing in the current period but not the previous period."""
+    return await _get(
+        f"/v1/agents/growth/{brand}/keywords/new",
+        {
+            "current_days": current_days,
+            "min_impressions": min_impressions,
+            "limit": limit,
+        },
+    )
+
+@mcp.tool(annotations=READ_ONLY)
+async def get_growth_action_history(brand: str, limit: int = 100) -> dict:
+    """Get tracked Growth Agent actions."""
+    return await _get(
+        f"/v1/agents/growth/{brand}/actions",
+        {"limit": limit},
+    )
